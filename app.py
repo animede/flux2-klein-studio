@@ -8,11 +8,13 @@ import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, ImageOps, UnidentifiedImageError
+from pydantic import BaseModel
 
 from engine import Cancelled, Engine
 from model_config import DEFAULT_MODEL, MODELS, ROOT
@@ -36,6 +38,53 @@ jobs_lock = threading.Lock()
 log = logging.getLogger("klein")
 
 
+class ModelInfo(BaseModel):
+    name: str
+    description: str
+    license: str
+    quantization: str
+    available: bool
+
+
+class HealthResponse(BaseModel):
+    status: str
+    loaded: bool
+    model: str
+    active_model: str | None
+    default_model: str
+    models: dict[str, ModelInfo]
+    busy: bool
+    memory_budget_gib: float
+
+
+class ModelsResponse(BaseModel):
+    default: str
+    active: str | None
+    models: dict[str, ModelInfo]
+
+
+class JobResponse(BaseModel):
+    id: str
+    status: str
+    step: int
+    steps: int
+    model: str
+    model_name: str
+    seed: int
+    message: str
+    created_at: float
+    reference_count: int
+    reference_max_side: int | None
+    metrics: dict[str, Any] | None = None
+    image_url: str | None = None
+    metadata_url: str | None = None
+
+
+class UnloadResponse(BaseModel):
+    status: str
+    loaded: bool
+
+
 def model_available(item):
     return ((item["model_dir"] / "model_index.json").is_file()
             and (item["gguf_dir"] / item["gguf_file"]).is_file())
@@ -46,7 +95,7 @@ def index():
     return FileResponse(ROOT / "static" / "index.html")
 
 
-@app.get("/api/health")
+@app.get("/api/health", response_model=HealthResponse, summary="サーバー状態")
 def health():
     return {
         "status": "ok", "loaded": engine.pipe is not None,
@@ -54,14 +103,15 @@ def health():
         "active_model": engine.active_model, "default_model": DEFAULT_MODEL,
         "models": {
             key: {"name": item["name"], "description": item["description"],
-                  "license": item["license"], "available": model_available(item)}
+                  "license": item["license"], "quantization": item["quantization"],
+                  "available": model_available(item)}
             for key, item in MODELS.items()
         },
         "busy": engine.lock.locked(), "memory_budget_gib": engine.memory_budget_gib,
     }
 
 
-@app.get("/api/models")
+@app.get("/api/models", response_model=ModelsResponse, summary="利用可能モデル一覧")
 def models():
     return {
         "default": DEFAULT_MODEL,
@@ -81,7 +131,8 @@ def public_job(job):
     return {k: v for k, v in job.items() if k != "cancel"}
 
 
-@app.get("/api/jobs/{job_id}")
+@app.get("/api/jobs/{job_id}", response_model=JobResponse, summary="生成状態を取得",
+         responses={404: {"description": "ジョブが存在しません"}})
 def job_status(job_id: str):
     with jobs_lock:
         if job_id not in jobs:
@@ -89,7 +140,8 @@ def job_status(job_id: str):
         return public_job(jobs[job_id])
 
 
-@app.post("/api/jobs/{job_id}/cancel")
+@app.post("/api/jobs/{job_id}/cancel", response_model=JobResponse, summary="生成を停止",
+          responses={404: {"description": "ジョブが存在しません"}})
 def cancel_job(job_id: str):
     with jobs_lock:
         if job_id not in jobs:
@@ -101,7 +153,8 @@ def cancel_job(job_id: str):
         return public_job(jobs[job_id])
 
 
-@app.post("/api/unload")
+@app.post("/api/unload", response_model=UnloadResponse, summary="モデルをメモリから解放",
+          responses={409: {"description": "生成中のため解放できません"}})
 def unload():
     if not engine.lock.acquire(blocking=False):
         raise HTTPException(409, "生成中は解放できません。")
@@ -193,11 +246,21 @@ def run_job(job_id, model_key, prompt, references, reference_side, width, height
         engine.lock.release()
 
 
-@app.post("/api/generate", status_code=202)
+@app.post(
+    "/api/generate", status_code=202, response_model=JobResponse, summary="画像生成を開始",
+    responses={
+        409: {"description": "別の生成を実行中、またはモデルが未取得です"},
+        413: {"description": "参照画像が10MBを超えています"},
+        422: {"description": "入力値が範囲外、または画像を読み込めません"},
+    },
+)
 async def generate(
-    prompt: str = Form(...), image: list[UploadFile] | None = File(None),
-    width: int = Form(768), height: int = Form(768), seed: int = Form(-1),
-    model: str = Form(DEFAULT_MODEL),
+    prompt: str = Form(..., description="生成内容。1〜4000文字。"),
+    image: list[UploadFile] | None = File(None, description="参照画像。imageフィールドを最大8回指定可能。"),
+    width: int = Form(768, description="出力幅。256〜1024の32の倍数。"),
+    height: int = Form(768, description="出力高さ。256〜1024の32の倍数。"),
+    seed: int = Form(-1, description="-1でランダム、または0〜4294967295。"),
+    model: str = Form(DEFAULT_MODEL, description="4bまたは9b。省略時は4b。"),
 ):
     prompt = prompt.strip()
     if not prompt or len(prompt) > 4000:

@@ -15,7 +15,9 @@ CUDA_VISIBLE_DEVICES=0 ./run.sh
 
 画面: http://127.0.0.1:7864/
 
-API仕様: http://127.0.0.1:7864/docs
+API仕様書: [docs/API.md](docs/API.md)
+
+起動中の対話型API仕様: http://127.0.0.1:7864/docs
 
 画面上部の「使用モデル」で切り替えます。モデル切替時は現在のモデルをGPUとRAMから解放してから次を読み込むため、両モデルを同時にVRAMへ載せません。
 
@@ -29,6 +31,8 @@ API仕様: http://127.0.0.1:7864/docs
 既定は4Bです。9Bを選ぶと画面上に非商用表示が出ます。参照画像は4Bで最大4枚まで各768px、8枚時512px、9Bでは4枚時512px、8枚時384pxへ自動調整します。
 
 ## API
+
+入力項目、レスポンス、ジョブ状態、エラーコードを含む完全な仕様は[API仕様書](docs/API.md)を参照してください。起動中はSwagger UI（`/docs`）、ReDoc（`/redoc`）、OpenAPI JSON（`/openapi.json`）も利用できます。
 
 `POST /api/generate` のmultipartフォームに `model=4b` または `model=9b` を指定します。省略時は互換性のため4Bです。
 

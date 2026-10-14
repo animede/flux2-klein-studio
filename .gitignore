@@ -1,0 +1,11 @@
+.venv
+models/
+outputs/
+uploads/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*.log
+*.pid
+.env
+.DS_Store

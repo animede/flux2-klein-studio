@@ -166,7 +166,7 @@ curl http://127.0.0.1:7864/api/models
 curl http://127.0.0.1:7864/api/health
 ```
 
-`available`が`false`のモデルは未取得です。`download_models.py 4b`または`download_models.py 9b`で取得してください。`active_model`は現在メモリに読み込まれているモデルで、未読み込み時は`null`です。
+`available`が`false`のモデルは未取得です。4Bは`download_models.py 4b`で取得できます。9Bは非商用・非本番ライセンスの確認後に`download_models.py 9b --acknowledge-9b-license`で取得してください。詳細は[第三者ライセンスと注意事項](../THIRD_PARTY_NOTICES.md)を参照してください。`active_model`は現在メモリに読み込まれているモデルで、未読み込み時は`null`です。
 
 ## HTTPエラー
 

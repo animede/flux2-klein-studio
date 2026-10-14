@@ -15,7 +15,7 @@ function busy(value) {
 }
 const modelInfo = {
   '4b': { badge: 'LOCAL · 4B', note: 'Q4 / NF4 · Apache-2.0', footer: 'FLUX.2 klein 4B · GGUF Q4 / NF4 · Apache-2.0' },
-  '9b': { badge: 'LOCAL · 9B · 非商用', note: 'Q3 / NF4 · 非商用ライセンス', footer: 'FLUX.2 klein 9B · GGUF Q3 / NF4 · 非商用ライセンス' },
+  '9b': { badge: 'LOCAL · 9B · 非商用・非本番', note: 'Q3 / NF4 · FLUX Non-Commercial License v2.1', footer: 'FLUX.2 klein 9B · GGUF Q3 / NF4 · 非商用・非本番' },
 };
 function updateModelInfo() {
   const key = $('model').value;
@@ -25,7 +25,7 @@ function updateModelInfo() {
   $('model-note').classList.toggle('license-warning', key === '9b');
   $('model-footer').textContent = info.footer;
   localStorage.setItem('klein-model', key);
-  showStatus(key === '9b' ? '9Bを選択しました。非商用用途で使用してください。' : '4Bを選択しました。');
+  showStatus(key === '9b' ? '9Bを選択しました。非商用・非本番用途に限られ、追加の利用条件があります。' : '4Bを選択しました。');
 }
 $('model').value = localStorage.getItem('klein-model') || '4b';
 $('model').addEventListener('change', updateModelInfo);
@@ -120,7 +120,7 @@ async function poll(id) {
         $('metadata').hidden = false;
         lastSeed = job.seed;
         const m = job.metrics;
-        const quant = job.model === '9b' ? 'GGUF Q3 / NF4 · 非商用' : 'GGUF Q4 / NF4 · Apache-2.0';
+        const quant = job.model === '9b' ? 'GGUF Q3 / NF4 · 非商用・非本番' : 'GGUF Q4 / NF4 · Apache-2.0';
         $('metrics').textContent = `モデル：${job.model_name}\nシード：${job.seed}\n生成時間：${m.seconds}秒（読み込み込み ${m.total_seconds}秒）\nピークVRAM：割り当て ${m.peak_allocated_gib} GiB / 予約 ${m.peak_reserved_gib} GiB\nGPU：${m.gpu}\nPyTorch割り当て上限：${m.allocator_budget_gib} GiB\n4ステップ · ${quant}\n※VRAM値はPyTorch計測。ドライバー等の使用量は含みません。`;
       }
       if (['done', 'error', 'cancelled'].includes(job.status)) {

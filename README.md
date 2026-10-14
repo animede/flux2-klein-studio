@@ -2,6 +2,9 @@
 
 FLUX.2 klein 4Bと9Bを一つの画面・APIから切り替えて使うローカル画像生成アプリです。T2I、I2I、最大8枚のRef2Iに対応します。
 
+> [!IMPORTANT]
+> このリポジトリのアプリコードはApache-2.0ですが、モデルは別ライセンスです。4BはApache-2.0、9BはFLUX Non-Commercial License v2.1（非商用・非本番用途）です。モデル重みはリポジトリに含みません。詳細は[第三者ライセンスと注意事項](THIRD_PARTY_NOTICES.md)を確認してください。
+
 ## 起動
 
 リポジトリを取得し、使用するモデルを準備してから起動します。
@@ -26,9 +29,9 @@ API仕様書: [docs/API.md](docs/API.md)
 | 選択値 | 用途 | 画像モデル | テキスト側 | ライセンス表示 |
 |---|---|---|---|---|
 | `4b` | 軽量・高速・通常利用 | GGUF Q4_K_M | Qwen3-4B NF4 | Apache-2.0 |
-| `9b` | 品質比較 | GGUF Q3_K_M | Qwen3-8B NF4 | 非商用 |
+| `9b` | 品質比較 | GGUF Q3_K_M | Qwen3-8B NF4 | FLUX Non-Commercial License v2.1（非商用・非本番） |
 
-既定は4Bです。9Bを選ぶと画面上に非商用表示が出ます。参照画像は4Bで最大4枚まで各768px、8枚時512px、9Bでは4枚時512px、8枚時384pxへ自動調整します。
+既定は4Bです。9Bを選ぶと画面上に非商用・非本番表示が出ます。参照画像は4Bで最大4枚まで各768px、8枚時512px、9Bでは4枚時512px、8枚時384pxへ自動調整します。
 
 ## API
 
@@ -68,13 +71,13 @@ CPUオフロード、VAEタイル、4ステップ、guidance 1.0、PyTorch上限
 
 このPCでは既存の4B・9Bモデルを共有しており、重複コピーしていません。別PCではPython 3.12、NVIDIA CUDA対応GPU、32GB以上のRAM、モデル用に40GB以上の空きディスクを推奨します。`.venv`、`models`、`outputs`、`uploads`はコピーせず、アプリのソースだけを移してください。
 
-### 全モデルを一度に準備
+### 4Bを準備（既定）
 
 ```bash
 ./setup.sh
 ```
 
-`setup.sh`を実行すると、最初にPython依存ライブラリをインストールし、その直後に4Bと9Bを並行ダウンロードします。初回起動時や最初の生成時にモデルを取得する方式ではありません。両モデルで約31GBです。途中で停止しても、同じコマンドを再実行すればHugging Faceのキャッシュから再開します。
+`setup.sh`を実行すると、最初にPython依存ライブラリをインストールし、その直後に4Bをダウンロードします。初回起動時や最初の生成時にモデルを取得する方式ではありません。途中で停止しても、同じコマンドを再実行すればHugging Faceのキャッシュから再開します。
 
 準備が完了してから起動します。
 
@@ -82,7 +85,7 @@ CPUオフロード、VAEタイル、4ステップ、guidance 1.0、PyTorch上限
 ./run.sh
 ```
 
-### 4Bだけ先に準備
+### 4Bを明示して準備
 
 まず約11GBの4Bだけを取得して使い始めることもできます。
 
@@ -91,26 +94,36 @@ CPUオフロード、VAEタイル、4ステップ、guidance 1.0、PyTorch上限
 ./run.sh
 ```
 
-後から9B（約20GB）を追加するときは、サーバーを停止する必要はありません。
+### 9Bを追加
+
+9Bは非商用・非本番用途に限定され、出力のフィルタリングまたは表示・配布前のレビューなど追加条件があります。先に[公式配布ページ](https://huggingface.co/black-forest-labs/FLUX.2-klein-9B)と[第三者ライセンスと注意事項](THIRD_PARTY_NOTICES.md)を読み、Hugging Face上でアクセス条件に同意してください。内容を確認した場合に限り、明示オプションを付けて約20GBを取得します。
 
 ```bash
-.venv/bin/python download_models.py 9b
+.venv/bin/python download_models.py 9b --acknowledge-9b-license
 ```
 
 取得完了後に画面を再読み込みすると9Bを選べるようになります。未取得モデルは選択欄で無効表示されます。依存ライブラリだけ準備し、モデルを後で取得する場合は `./setup.sh none` を使います。個別取得は次の通りです。
 
 ```bash
 .venv/bin/python download_models.py 4b
-.venv/bin/python download_models.py 9b
+.venv/bin/python download_models.py 9b --acknowledge-9b-license
+```
+
+両方を一度に準備する場合は、ライセンス確認後に次を実行します。
+
+```bash
+./setup.sh all --acknowledge-9b-license
 ```
 
 モデル取得にはインターネット接続が必要です。取得後の生成はローカルファイルのみで動作し、画像・プロンプトは外部APIへ送信しません。
 
 ## ライセンス
 
-このリポジトリで作成したアプリケーションコードは[Apache License 2.0](LICENSE)で提供します。
+このリポジトリで作成したアプリケーションコードは[Apache License 2.0](LICENSE)で提供します。モデル重みはリポジトリに含めず、`models/`はGit管理から除外しています。
 
-モデル、モデル重み、トークナイザー、および依存ライブラリには、それぞれの提供元ライセンスが適用されます。このリポジトリのApache-2.0ライセンスは、それら第三者配布物のライセンスを変更しません。特にFLUX.2 klein 9Bは非商用ライセンスです。ダウンロード時に保存される各モデルの`LICENSE.md`と配布ページを確認してください。
+モデル、モデル重み、トークナイザー、および依存ライブラリには、それぞれの提供元ライセンスが適用されます。このリポジトリのApache-2.0ライセンスは、それら第三者配布物のライセンスを変更しません。特にFLUX.2 klein 9BはFLUX Non-Commercial License v2.1の対象で、非商用・非本番用途に限定されます。
+
+各モデルの適用ライセンス、9Bの追加条件、再配布、商標に関する説明は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)にまとめています。実際の利用ではリンク先の最新の原文が優先されます。
 
 - [FLUX.2 klein 4B](https://huggingface.co/black-forest-labs/FLUX.2-klein-4B)
 - [FLUX.2 klein 9B](https://huggingface.co/black-forest-labs/FLUX.2-klein-9B)
